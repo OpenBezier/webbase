@@ -2,9 +2,11 @@
 name = "webbase"
 version = "0.0.1"
 edition = "2021"
-license = "MIT"
+license = "MIT OR Apache-2.0"
 authors = ["AsEuler <aseuler@outlook.com>"]
 publish = true
+repository = "https://github.com/OpenBezier/webbase"
+description = "webbase"
 
 [dependencies]
 tracing = "0.1.37"
