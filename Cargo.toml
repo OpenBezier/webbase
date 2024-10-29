@@ -1,5 +1,5 @@
 [package]
-name = "common"
+name = "webbase"
 version = "0.0.1"
 edition = "2021"
 license = "MIT"
@@ -19,7 +19,6 @@ sea-orm = { workspace = true, features = [
 fred = { workspace = true }
 redis = { workspace = true, features = ["tokio-rustls-comp", "json"] }
 redlock = { workspace = true }
-
 futures = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -38,7 +37,6 @@ reqwest = { workspace = true, default-features = false, features = [
     "rustls-tls",
 ] }
 uuid = { workspace = true, features = ["v4", "fast-rng", "macro-diagnostics"] }
-
 jsonwebtoken = "9.3.0"
 bcrypt = "0.15.0"
 futures-util = "0.3.30"
@@ -47,7 +45,7 @@ influxdb = { version = "0.7.1", features = ["derive"], optional = true }
 md-5 = "0.10.6"
 
 [target.'cfg(windows)'.dependencies]
-wmi = "0.13.3"
+wmi = "0.14.0"
 winreg = "0.52.0"
 
 [features]
