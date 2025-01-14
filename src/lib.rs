@@ -21,6 +21,8 @@ pub use response::{ClientRsp, NoneBodyData, Response};
 
 pub mod token;
 pub use token::*;
+pub mod token_rsa;
+pub use token_rsa::*;
 
 pub mod client;
 pub use client::*;
