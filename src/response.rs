@@ -6,6 +6,7 @@ use utoipa::ToSchema;
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 pub struct NoneBodyData {}
 
+/// Client使用的通用格式返回数据类型，message可为String或泛型T
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClientRsp {
     pub status: bool,
@@ -13,6 +14,7 @@ pub struct ClientRsp {
     pub message: serde_json::Value,
 }
 
+/// Client使用的正确返回类型数据格式定义
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OkData<T: Serialize + Debug> {
     pub status: bool,
@@ -20,6 +22,7 @@ pub struct OkData<T: Serialize + Debug> {
     pub message: T,
 }
 
+/// Client使用的错误返回类型数据格式定义
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ErrData {
     pub status: bool,
@@ -27,14 +30,15 @@ pub struct ErrData {
     pub message: String,
 }
 
+/// 服务端使用的回复响应泛型数据类型
 #[derive(Debug)]
-pub struct Response<T: Serialize + Debug + ToSchema> {
+pub struct Response<T: Serialize + Debug> {
     pub code: StatusCode,
     pub message: String,
     pub data: Option<T>,
 }
 
-impl<T: Serialize + Debug + ToSchema> Response<T> {
+impl<T: Serialize + Debug> Response<T> {
     #[allow(dead_code)]
     pub fn success(data: T) -> Self {
         Self {
@@ -119,13 +123,13 @@ impl<T: Serialize + Debug + ToSchema> Response<T> {
     }
 }
 
-impl<T: Serialize + Debug + ToSchema> std::fmt::Display for Response<T> {
+impl<T: Serialize + Debug> std::fmt::Display for Response<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{ code: {}, message: {} }}", self.code, self.message)
     }
 }
 
-impl<T: Serialize + Debug + ToSchema> actix_web::error::ResponseError for Response<T> {
+impl<T: Serialize + Debug> actix_web::error::ResponseError for Response<T> {
     fn status_code(&self) -> StatusCode {
         self.code.clone()
     }

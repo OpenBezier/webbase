@@ -154,7 +154,7 @@ pub fn get_token_and_path(req: &HttpRequest) -> (HeaderMap, String) {
     (headers.clone(), reqpath)
 }
 
-pub async fn check_and_verify<T: Serialize + Debug + utoipa::ToSchema>(
+pub async fn check_and_verify<T: Serialize + Debug>(
     req: &HttpRequest,
 ) -> Result<AccessToken, Error> {
     let access = get_pmap().check_and_verify(&req).await.map_err(|e| {
@@ -166,7 +166,7 @@ pub async fn check_and_verify<T: Serialize + Debug + utoipa::ToSchema>(
     Ok(access)
 }
 
-pub fn create_error<T: Serialize + Debug + utoipa::ToSchema>(e: anyhow::Error, err: &str) -> Error {
+pub fn create_error<T: Serialize + Debug>(e: anyhow::Error, err: &str) -> Error {
     tracing::error!("error of {}:{:?}", err, e);
     let rsp = Response::<T>::internal_error(format!("{}:{:?}", err, e).as_str()).finished();
     error::InternalError::from_response("", rsp).into()
