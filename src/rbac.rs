@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::OnceLock;
 use tokio::sync::RwLock;
+use utoipa::ToSchema;
 
 static RBAC: OnceLock<RbacCache> = OnceLock::<RbacCache>::new();
 
@@ -36,20 +37,20 @@ use std::collections::HashMap;
 pub type UserPermission =
     HashMap<String, BTreeMap<String, (bool, Option<Vec<(String, String)>>, Option<String>)>>;
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, ToSchema)]
 pub struct Permission {
     pub role: Vec<String>,
     pub comment: Option<String>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, ToSchema)]
 #[serde(untagged)]
 pub enum Role {
     Member(Vec<String>),
     Group(HashMap<String, Vec<String>>),
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default, ToSchema)]
 pub struct RpConfig {
     pub name: String,
     pub role: HashMap<String, Role>,
