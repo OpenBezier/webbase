@@ -67,18 +67,19 @@ impl PermissionMap {
         let (headers, reqpath) = get_token_and_path(req);
         // tracing::info!("check for {:?}", reqpath);
 
-        if !headers.contains_key("Authorization") {
+        if !headers.contains_key(actix_http::header::AUTHORIZATION) {
             return Err(anyhow!("Header中无鉴权信息"));
         }
 
         let token = headers
-            .get("Authorization")
+            .get(actix_http::header::AUTHORIZATION)
             .unwrap()
             .to_str()
             .unwrap()
             .to_string();
-        if !token.contains("Bearer ") || token.len() < 7 {
-            return Err(anyhow!("Header中鉴权信息的格式不对"));
+        // if !token.contains("Bearer ") || token.len() < 7 {
+        if token.len() < 7 {
+            return Err(anyhow!("Header中鉴权信息bearer的格式不对"));
         }
 
         let token = token.split_at(7).1.to_string();
@@ -153,7 +154,7 @@ pub fn get_token_and_path(req: &HttpRequest) -> (HeaderMap, String) {
     (headers.clone(), reqpath)
 }
 
-pub async fn check_and_verify<T: Serialize + Debug>(
+pub async fn check_and_verify<T: Serialize + Debug + utoipa::ToSchema>(
     req: &HttpRequest,
 ) -> Result<AccessToken, Error> {
     let access = get_pmap().check_and_verify(&req).await.map_err(|e| {
@@ -165,7 +166,7 @@ pub async fn check_and_verify<T: Serialize + Debug>(
     Ok(access)
 }
 
-pub fn create_error<T: Serialize + Debug>(e: anyhow::Error, err: &str) -> Error {
+pub fn create_error<T: Serialize + Debug + utoipa::ToSchema>(e: anyhow::Error, err: &str) -> Error {
     tracing::error!("error of {}:{:?}", err, e);
     let rsp = Response::<T>::internal_error(format!("{}:{:?}", err, e).as_str()).finished();
     error::InternalError::from_response("", rsp).into()

@@ -1,6 +1,6 @@
 [package]
 name = "webbase"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["AsEuler <aseuler@outlook.com>"]
@@ -50,6 +50,7 @@ futures-util = "0.3.30"
 rdkafka = { version = "0.36.2", optional = true }
 influxdb = { version = "0.7.1", features = ["derive"], optional = true }
 md-5 = "0.10.6"
+utoipa = { version = "5", features = ["actix_extras"] }
 
 [target.'cfg(windows)'.dependencies]
 wmi = "0.14.0"

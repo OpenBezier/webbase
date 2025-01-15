@@ -1,16 +1,10 @@
 use actix_web::{http::StatusCode, HttpResponse};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use utoipa::ToSchema;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, ToSchema)]
 pub struct NoneBodyData {}
-
-#[derive(Debug)]
-pub struct Response<T: Serialize + Debug> {
-    pub code: StatusCode,
-    pub message: String,
-    pub data: Option<T>,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClientRsp {
@@ -33,7 +27,14 @@ pub struct ErrData {
     pub message: String,
 }
 
-impl<T: Serialize + Debug> Response<T> {
+#[derive(Debug)]
+pub struct Response<T: Serialize + Debug + ToSchema> {
+    pub code: StatusCode,
+    pub message: String,
+    pub data: Option<T>,
+}
+
+impl<T: Serialize + Debug + ToSchema> Response<T> {
     #[allow(dead_code)]
     pub fn success(data: T) -> Self {
         Self {
@@ -118,13 +119,13 @@ impl<T: Serialize + Debug> Response<T> {
     }
 }
 
-impl<T: Serialize + Debug> std::fmt::Display for Response<T> {
+impl<T: Serialize + Debug + ToSchema> std::fmt::Display for Response<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{ code: {}, message: {} }}", self.code, self.message)
     }
 }
 
-impl<T: Serialize + Debug> actix_web::error::ResponseError for Response<T> {
+impl<T: Serialize + Debug + ToSchema> actix_web::error::ResponseError for Response<T> {
     fn status_code(&self) -> StatusCode {
         self.code.clone()
     }

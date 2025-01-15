@@ -1,3 +1,4 @@
+extern crate utoipa;
 pub mod db_datatime;
 pub mod db_password;
 
