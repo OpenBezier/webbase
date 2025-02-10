@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["AsEuler <aseuler@outlook.com>"]
 publish = true
-repository = "https://github.com/OpenBezier/webbase"
+repository = "https://gitee.com/asbezier/webbase"
 description = "webbase"
 
 [dependencies]
