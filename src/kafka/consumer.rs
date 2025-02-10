@@ -29,12 +29,22 @@ impl ConsumerContext for CustomContext {
 
 pub struct KafkaConsumer {}
 
+#[derive(Debug, Clone)]
+pub struct ConsumerMsg {
+    pub key: Option<Vec<u8>>,
+    pub payload: Option<Vec<u8>>,
+    pub topic: String,
+    pub timestamp: Option<i64>,
+    pub partition: i32,
+    pub offset: i64,
+}
+
 impl KafkaConsumer {
     pub fn start_consume(
         topic: String,
         group_id: String,
         brokers: String,
-        sender: UnboundedSender<(String, String)>,
+        sender: UnboundedSender<ConsumerMsg>,
     ) -> anyhow::Result<()> {
         let mut creator = ClientConfig::new();
         creator.set("group.id", group_id);
@@ -64,17 +74,36 @@ impl KafkaConsumer {
                     Err(e) => warn!("Kafka strem error: {}", e),
                     Ok(m) => {
                         // let payload = m.payload_view::<str>().unwrap();
-                        let payload = match m.payload_view::<str>() {
-                            None => "",
-                            Some(Ok(s)) => s,
-                            Some(Err(e)) => {
-                                warn!("Error while deserializing message payload: {:?}", e);
-                                ""
-                            }
+                        // let payload = match m.payload_view::<str>() {
+                        //     None => "",
+                        //     Some(Ok(s)) => s,
+                        //     Some(Err(e)) => {
+                        //         warn!("Error while deserializing message payload: {:?}", e);
+                        //         ""
+                        //     }
+                        // };
+                        // info!("key: '{:?}', payload: '{}', topic: {}, partition: {}, offset: {}, timestamp: {:?}", m.key(), payload, m.topic(), m.partition(), m.offset(), m.timestamp());
+                        // let key = String::from_utf8_lossy(m.key().unwrap()).to_string();
+                        let key = if m.key().is_some() {
+                            Some(m.key().unwrap().to_vec())
+                        } else {
+                            None
                         };
-                        info!("key: '{:?}', payload: '{}', topic: {}, partition: {}, offset: {}, timestamp: {:?}", m.key(), payload, m.topic(), m.partition(), m.offset(), m.timestamp());
-                        let key = String::from_utf8_lossy(m.key().unwrap()).to_string();
-                        let _ = sender.send((key, payload.into()));
+                        let payload: Option<Vec<u8>> = if m.payload().is_some() {
+                            Some(m.payload().unwrap().to_vec())
+                        } else {
+                            None
+                        };
+
+                        let data = ConsumerMsg {
+                            timestamp: m.timestamp().to_millis(),
+                            topic: m.topic().to_string(),
+                            partition: m.partition(),
+                            key: key,
+                            payload: payload,
+                            offset: m.offset(),
+                        };
+                        let _ = sender.send(data);
                         consumer.commit_message(&m, CommitMode::Async).unwrap();
                     }
                 };
