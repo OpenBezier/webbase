@@ -55,19 +55,18 @@ pub fn get_redis_pool() -> &'static RedisPool {
     REDISPOOL.get().unwrap()
 }
 
-const REDIS_KEY_PREFIX: &str = "KvCache";
+// const REDIS_KEY_PREFIX: &str = "KvCache";
 
 pub async fn get_kv_cache(key: &String) -> anyhow::Result<String> {
     let mut connection = get_redis_pool().connection.clone();
-    let key = format!("{}:{}", REDIS_KEY_PREFIX, key);
+    // let key = format!("{}:{}", REDIS_KEY_PREFIX, key);
     let res: String = connection.get(&key).await?;
     Ok(res)
 }
 
 pub async fn set_kv_cache(key: &String, value: &String, ex: Option<u64>) -> anyhow::Result<()> {
     let mut connection = get_redis_pool().connection.clone();
-    let key = format!("{}:{}", REDIS_KEY_PREFIX, key);
-
+    // let key = format!("{}:{}", REDIS_KEY_PREFIX, key);
     if ex.is_none() {
         let _: () = connection.set(key, value).await?;
     } else {
@@ -78,7 +77,7 @@ pub async fn set_kv_cache(key: &String, value: &String, ex: Option<u64>) -> anyh
 
 pub async fn delete_kv_cache(key: &String) -> anyhow::Result<()> {
     let mut connection = get_redis_pool().connection.clone();
-    let key = format!("{}:{}", REDIS_KEY_PREFIX, key);
+    // let key = format!("{}:{}", REDIS_KEY_PREFIX, key);
     let _: () = connection.del(key).await?;
     Ok(())
 }

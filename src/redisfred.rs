@@ -9,7 +9,7 @@ use tracing::{debug, info};
 
 #[derive(Clone)]
 pub struct RedisCachePool {
-    pub client: RedisPool,
+    pub pool: RedisPool,
     pub redlock: RedLock,
 }
 
@@ -57,7 +57,7 @@ pub fn init_redis_pool(redis_url: String) -> &'static RedisCachePool {
 
         let redlock = redlock::RedLock::new(vec![redis_url.clone()]);
         RedisCachePool {
-            client: redis_pool,
+            pool: redis_pool,
             redlock: redlock,
         }
     })
@@ -67,28 +67,32 @@ pub fn get_redis_pool() -> &'static RedisCachePool {
     REDISPOOL.get().unwrap()
 }
 
-const REDIS_KEY_PREFIX: &str = "KvCache";
+pub fn get_redis_client() -> &'static fred::clients::RedisClient {
+    REDISPOOL.get().unwrap().pool.next()
+}
+
+// const REDIS_KEY_PREFIX: &str = "KvCache";
 
 pub async fn get_kv_cache(key: &String) -> anyhow::Result<String> {
     let redis = get_redis_pool();
-    let key = format!("{}:{}", REDIS_KEY_PREFIX, key);
-    let res: String = redis.client.get(&key).await?;
+    // let key = format!("{}:{}", REDIS_KEY_PREFIX, key);
+    let res: String = redis.pool.get(key).await?;
     Ok(res)
 }
 
 pub async fn set_kv_cache(key: &String, value: &String, ex: Option<i64>) -> anyhow::Result<()> {
     let redis = get_redis_pool();
-    let key = format!("{}:{}", REDIS_KEY_PREFIX, key);
+    // let key = format!("{}:{}", REDIS_KEY_PREFIX, key);
     let _res = if ex.is_none() {
         let res: RedisValue = redis
-            .client
-            .set(&key, value.clone(), None, None, false)
+            .pool
+            .set(key, value.clone(), None, None, false)
             .await?;
         res
     } else {
         let res: RedisValue = redis
-            .client
-            .set(&key, value.clone(), Some(EX(ex.unwrap())), None, false)
+            .pool
+            .set(key, value.clone(), Some(EX(ex.unwrap())), None, false)
             .await?;
         res
     };
@@ -97,7 +101,7 @@ pub async fn set_kv_cache(key: &String, value: &String, ex: Option<i64>) -> anyh
 
 pub async fn delete_kv_cache(key: &String) -> anyhow::Result<()> {
     let redis = get_redis_pool();
-    let key = format!("{}:{}", REDIS_KEY_PREFIX, key);
-    let _res: String = redis.client.del(&key).await?;
+    // let key = format!("{}:{}", REDIS_KEY_PREFIX, key);
+    let _res: String = redis.pool.del(key).await?;
     Ok(())
 }
