@@ -7,11 +7,13 @@ static RBAC: OnceLock<RbacCache> = OnceLock::<RbacCache>::new();
 
 pub struct RbacCache {
     pub rbac: Arc<RwLock<RpConfig>>,
+    pub rbac_map: Arc<RwLock<HashMap<String, RpConfig>>>,
 }
 
 pub fn init_rbac(rpconfig: RpConfig) -> &'static RbacCache {
     RBAC.get_or_init(|| RbacCache {
         rbac: Arc::new(RwLock::new(rpconfig)),
+        rbac_map: Arc::new(RwLock::new(HashMap::default())),
     })
 }
 
@@ -19,15 +21,26 @@ pub fn get_rbac() -> &'static RbacCache {
     RBAC.get().unwrap()
 }
 
-pub fn update_rbac_config() {
-    tokio::spawn(async {
-        loop {
-            let perm = get_rbac();
-            let mut rbac = perm.rbac.write().await;
-            *rbac = RpConfig::default();
-            tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+impl RbacCache {
+    pub async fn update_rbac_map(&self, key: &String, rpconfig: RpConfig) {
+        let mut map = self.rbac_map.write().await;
+        map.insert(key.clone(), rpconfig);
+    }
+
+    pub async fn get_rbac_from_map(&self, rbac_key: &String) -> Option<RpConfig> {
+        let map = self.rbac_map.read().await;
+        if map.contains_key(rbac_key) {
+            let config = map.get(rbac_key).unwrap().clone();
+            Some(config)
+        } else {
+            None
         }
-    });
+    }
+
+    pub async fn update_rbac(&self, rpconfig: RpConfig) {
+        let mut rbac = self.rbac.write().await;
+        *rbac = rpconfig;
+    }
 }
 
 use serde::{Deserialize, Serialize};

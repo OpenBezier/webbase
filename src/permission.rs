@@ -50,7 +50,6 @@ pub fn get_pmap() -> &'static PermissionMap {
 
 impl PermissionMap {
     pub async fn get_rbac_config(&self) -> RpConfig {
-        // janus服务不会初始化idm，所有直接返回rbac里面的配置
         if self.use_local {
             return get_rbac().rbac.read().await.clone();
         } else {
@@ -61,6 +60,50 @@ impl PermissionMap {
             };
             app_rpinfo
         }
+    }
+
+    pub async fn get_rbac_config_from_map(&self, rbac_key: &String) -> anyhow::Result<RpConfig> {
+        if let Some(config) = get_rbac().get_rbac_from_map(rbac_key).await {
+            Ok(config)
+        } else {
+            return Err(anyhow!("无法在RBAC-MAP中找到Key-{}相关的配置", rbac_key));
+        }
+    }
+
+    pub async fn check_token_only(&self, req: &HttpRequest) -> anyhow::Result<AccessToken> {
+        let (headers, _reqpath) = get_token_and_path(req);
+        if !headers.contains_key(actix_http::header::AUTHORIZATION) {
+            return Err(anyhow!("Header中无鉴权信息"));
+        }
+
+        let token = headers
+            .get(actix_http::header::AUTHORIZATION)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        // if !token.contains("Bearer ") || token.len() < 7 {
+        if token.len() < 7 {
+            return Err(anyhow!("Header中鉴权信息bearer的格式不对"));
+        }
+
+        let token = token.split_at(7).1.to_string();
+        let access = if self.use_rsa {
+            let access = AccessTokenRsa::decode_token(&token, &self.secret);
+            if access.is_ok() {
+                access.unwrap().to_token()
+            } else {
+                return Err(anyhow!("解析AccessToken鉴权信息识别"));
+            }
+        } else {
+            let access = AccessToken::decode_token(&token, self.secret.as_str());
+            if access.is_ok() {
+                access.unwrap()
+            } else {
+                return Err(anyhow!("解析AccessToken鉴权信息识别"));
+            }
+        };
+        Ok(access)
     }
 
     pub async fn check_and_verify(&self, req: &HttpRequest) -> anyhow::Result<AccessToken> {
@@ -113,8 +156,94 @@ impl PermissionMap {
         }
 
         let user_account = access.user_account.clone();
-        // 优先使用远端IDM-Janus的配置信息
         let app_rpinfo = self.get_rbac_config().await;
+
+        // 非正则表达式进行匹配
+        if let Some((page, item)) = self.pmap.get(reqpath.as_str()) {
+            let check_status = app_rpinfo.check_user_action(
+                user_account.clone(),
+                page.to_string(),
+                item.to_string(),
+            );
+            if check_status.0 {
+                // 任意一个角色下，包括default，只要判断了page+item是enabled状态，直接返回成功
+                return Ok(access);
+            }
+        }
+        // 正则表达式进行匹配
+        for (each_route, (page, item)) in self.pmap.iter() {
+            if let Ok(re) = Regex::new(*each_route) {
+                if re.captures(&reqpath).is_some() {
+                    let check_status = app_rpinfo.check_user_action(
+                        user_account.clone(),
+                        page.to_string(),
+                        item.to_string(),
+                    );
+                    if check_status.0 {
+                        // 任意一个角色下，包括default，只要判断了page+item是enabled状态，直接返回成功
+                        return Ok(access);
+                    }
+                }
+            }
+        }
+        return Err(anyhow!("核查所有权限后该用户无对应权限:{:?}", user_account));
+    }
+
+    pub async fn check_and_verify_map(
+        &self,
+        req: &HttpRequest,
+        rbac_key: &String,
+    ) -> anyhow::Result<AccessToken> {
+        let (headers, reqpath) = get_token_and_path(req);
+        // tracing::info!("check for {:?}", reqpath);
+
+        if !headers.contains_key(actix_http::header::AUTHORIZATION) {
+            return Err(anyhow!("Header中无鉴权信息"));
+        }
+
+        let token = headers
+            .get(actix_http::header::AUTHORIZATION)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        // if !token.contains("Bearer ") || token.len() < 7 {
+        if token.len() < 7 {
+            return Err(anyhow!("Header中鉴权信息bearer的格式不对"));
+        }
+
+        let token = token.split_at(7).1.to_string();
+        let access = if self.use_rsa {
+            let access = AccessTokenRsa::decode_token(&token, &self.secret);
+            if access.is_ok() {
+                access.unwrap().to_token()
+            } else {
+                return Err(anyhow!("解析AccessToken鉴权信息识别"));
+            }
+        } else {
+            let access = AccessToken::decode_token(&token, self.secret.as_str());
+            if access.is_ok() {
+                access.unwrap()
+            } else {
+                return Err(anyhow!("解析AccessToken鉴权信息识别"));
+            }
+        };
+
+        // 非正则表达式进行匹配 白名单接口直接放行
+        if self.whitelist.contains(&reqpath.as_str()) {
+            return Ok(access);
+        }
+        // 正则表达式进行匹配 白名单接口直接放行
+        for each in self.whitelist.iter() {
+            if let Ok(re) = Regex::new(*each) {
+                if re.captures(&reqpath).is_some() {
+                    return Ok(access);
+                }
+            }
+        }
+
+        let user_account = access.user_account.clone();
+        let app_rpinfo = self.get_rbac_config_from_map(rbac_key).await?;
 
         // 非正则表达式进行匹配
         if let Some((page, item)) = self.pmap.get(reqpath.as_str()) {
