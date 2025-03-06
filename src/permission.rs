@@ -283,6 +283,18 @@ pub fn get_token_and_path(req: &HttpRequest) -> (HeaderMap, String) {
     (headers.clone(), reqpath)
 }
 
+pub async fn check_token_only<T: Serialize + Debug>(
+    req: &HttpRequest,
+) -> Result<AccessToken, Error> {
+    let access = get_pmap().check_token_only(&req).await.map_err(|e| {
+        tracing::error!("token check error: {:?}", e);
+        let rsp =
+            Response::<T>::internal_error(format!("Token验证错误: {:?}", e).as_str()).finished();
+        error::InternalError::from_response("", rsp)
+    })?;
+    Ok(access)
+}
+
 pub async fn check_and_verify<T: Serialize + Debug>(
     req: &HttpRequest,
 ) -> Result<AccessToken, Error> {
@@ -292,6 +304,24 @@ pub async fn check_and_verify<T: Serialize + Debug>(
             .finished();
         error::InternalError::from_response("", rsp)
     })?;
+    Ok(access)
+}
+
+pub async fn check_and_verify_map<T: Serialize + Debug>(
+    req: &HttpRequest,
+    rbac_key: &String,
+) -> Result<AccessToken, Error> {
+    let access = get_pmap()
+        .check_and_verify_map(&req, rbac_key)
+        .await
+        .map_err(|e| {
+            tracing::error!("token permission error: {:?}", e);
+            let rsp = Response::<T>::internal_error(
+                format!("Token权限验证错误: {}-{:?}", rbac_key, e).as_str(),
+            )
+            .finished();
+            error::InternalError::from_response("", rsp)
+        })?;
     Ok(access)
 }
 
